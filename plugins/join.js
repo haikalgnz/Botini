@@ -1,29 +1,21 @@
 let linkRegex = /chat.whatsapp.com\/([0-9A-Za-z]{20,24})/i
 
-let handler = async (m, { conn, text, usedPrefix, args }) => {
-    let user = db.data.users[m.sender]
-    if (joincount === 3 ) throw 'Anda sudah melebihi batas maksimal memasukkan bot sebagai user premium.'
-    user.joincount += 1
-    m.reply(`Joincount mu: ${user.joincount}/3`)
-    if (!args[0]) throw 'Masukkan link group'
-    if (!args[1]) throw 'Masukkan jumlah hari'
-    let [_, code] = args[0].match(linkRegex) || []
-    if (!code) throw 'Link Salah'
-    let res = await conn.acceptInvite(code)
-    m.reply(`Berhasil join grup ${res.gid}`).then(() => {
-        var jumlahHari = 86400000 * `${args[1]}`
-        var now = new Date() * 1
-        if (now < global.db.data.chats[res.gid].expired) global.db.data.chats[res.gid].expired += jumlahHari
-        else global.db.data.chats[res.gid].expired = now + jumlahHari
-    })
-    conn.send3Button(res.gid, `
-*${conn.user.name}* adalah bot whatsapp yang dibangun dengan Nodejs, *${conn.user.name}* diundang oleh @${m.sender.split`@`[0]}
-    
-ketik *${usedPrefix}menu* untuk melihat daftar perintah`.trim(), watermark, 'Menu', `${usedPrefix}?`, 'Panduan', '.panduan', 'Owner', '.owner', 0, { contextInfo: { mentionedJid: [m.sender] } })
+let handler = async (m, { conn, text, isMods, isOwner }) => {
+    let link = (m.quoted ? m.quoted.text ? m.quoted.text : text : text) || text
+    let [_, code] = link.match(linkRegex) || []
+    if (!code) throw 'Link invalid'
+    if (isMods || isOwner || m.fromMe) {
+        let res = await conn.acceptInvite(code)
+        m.reply(`Berhasil join grup ${res.gid}`)
+    } else {
+        for (let jid of global.owner.map(v => v.replace(/[^0-9]/g, '') + '@s.whatsapp.net').filter(v => v != conn.user.jid)) m.reply('*dari:* ' + m.sender.split('@')[0] + '\n*Link:* ' + link, jid)
+        m.reply('Sedang di process Owner,Bayar kalau mau cepat miskin kali gratisan')
+    }
 }
-handler.help = ['join <chat.whatsapp.com> <jumlah hari>']
+handler.help = ['join [chat.whatsapp.com]']
 handler.tags = ['premium']
 
 handler.command = /^join$/i
-handler.premium = true
+
+handler.register = true 
 module.exports = handler
