@@ -1,24 +1,22 @@
 let handler = m => m
 
-handler.all = async function (m) {
-    if (!m.message) return
-    this.spam = this.spam ? this.spam : {}
-    if (m.sender in this.spam) {
-        this.spam[m.sender].count++
-        if (m.messageTimestamp.toNumber() - this.spam[m.sender].lastspam > 10) {
-            if (this.spam[m.sender].count > 10) {
-                global.db.data.users[m.sender].banned = true
-                m.reply('*Jangan Spam!!PANTEK*')
-            }
-            this.spam[m.sender].count = 0
-            this.spam[m.sender].lastspam = m.messageTimestamp.toNumber()
-        }
-    }
-    else this.spam[m.sender] = {
-        jid: m.sender,
-        count: 0,
-        lastspam: 0
-    }
+let linkRegex = /chat.whatsapp.com\/([0-9A-Za-z]{20,24})/i
+handler.before = async function (m, { user, isBotAdmin, isAdmin }) {
+  if ((m.isBaileys && m.fromMe) || m.fromMe || !m.isGroup) return true
+  let chat = global.DATABASE.data.chats[m.chat]
+  let isGroupLink = linkRegex.exec(m.text)
+
+  if (chat.antiLink && isGroupLink) {
+    await m.reply(`*「 ANTI LINK 」*\n\nTerdeteksi *${await this.getName(m.sender)}* kamu telah mengirim link group!\n\nMaaf Kamu akan dikick dari grup ini byee!`)
+    if (isAdmin) return m.reply('*Eh maap kamu admin, kamu gk bakal dikick. hehe..*')
+    if (!isBotAdmin) return m.reply('*Bot bukan admin, mana bisa kick orang _-*')
+    let linkGC = ('https://chat.whatsapp.com/' + await this.groupInviteCode(m.chat))
+    let isLinkThisGc = new RegExp(linkGC, 'i')
+    let isgclink = isLinkThisGc.test(m.text)
+    if (isgclink) return m.reply('*Lol ngirim link group sendiri :v*')
+    await this.groupRemove(m.chat, [m.sender])
+  }
+  return true
 }
 
 module.exports = handler
