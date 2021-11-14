@@ -1,20 +1,24 @@
 let handler = m => m
 
-let linkRegex = /chat.whatsapp.com\/(?:invite\/)?([0-9A-Za-z]{20,24})/i
-handler.before = async function (m, { isAdmin, isBotAdmin }) {
-  if (m.isBaileys && m.fromMe) return true
-  let chat = global.db.data.chats[m.chat]
-  let isGroupLink = linkRegex.exec(m.text)
-
-  if (chat.antiLink && isGroupLink && !isAdmin && !m.isBaileys && m.isGroup) {
-    let thisGroup = `https://chat.whatsapp.com/${await conn.groupInviteCode(m.chat)}`
-    if (m.text.includes(thisGroup)) throw false // jika link grup itu sendiri gak dikick
-    await this.sendButon(m.chat, `*Link Grup Terdeteksi!*${isBotAdmin ? '' : '\n\nbukan admin jadi gabisa kick t_t'}\n\nKetik *.off antilink* untuk mematikan fitur ini${opts['restrict'] ? '' : '\nketik *#on restrict* supaya bisa kick'}`, watermark, 'Matikan Antilink', ',0 antilink', m)
-    if (global.opts['restrict']) {
-      if (isBotAdmin) this.groupRemove(m.chat, [m.sender])
+handler.all = async function (m) {
+    if (!m.message) return
+    this.spam = this.spam ? this.spam : {}
+    if (m.sender in this.spam) {
+        this.spam[m.sender].count++
+        if (m.messageTimestamp.toNumber() - this.spam[m.sender].lastspam > 10) {
+            if (this.spam[m.sender].count > 10) {
+                global.db.data.users[m.sender].banned = true
+                m.reply('*Jangan Spam!!PANTEK*')
+            }
+            this.spam[m.sender].count = 0
+            this.spam[m.sender].lastspam = m.messageTimestamp.toNumber()
+        }
     }
-  }
-  return true
+    else this.spam[m.sender] = {
+        jid: m.sender,
+        count: 0,
+        lastspam: 0
+    }
 }
 
 module.exports = handler
